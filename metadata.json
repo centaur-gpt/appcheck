@@ -1,0 +1,6 @@
+{
+  "name": "MoscowSale",
+  "description": "Агрегатор скидок и акций для Москвы, вдохновленный минималистичным дизайном Kaspi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
