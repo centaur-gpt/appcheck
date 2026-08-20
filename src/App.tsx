@@ -1,16 +1,68 @@
-import React, { useState } from 'react';
-import { Search, Bell, MapPin, Home, Heart, Map as MapIcon, User } from 'lucide-react';
-import { CATEGORIES, MOCK_OFFERS, Category } from './data';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Bell, MapPin, Home, Heart, Map as MapIcon, User, AlertCircle, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { CATEGORIES, Category } from './data';
+
+interface BackendOffer {
+  id: number | string;
+  title: string;
+  description: string;
+  category: string;
+  discount_type: string;
+  address: string;
+  image_url: string | null;
+  source_url: string;
+  created_at: string;
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'favorites' | 'map' | 'profile'>('home');
   const [activeCategory, setActiveCategory] = useState<Category>('Все');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredOffers = MOCK_OFFERS.filter(offer => 
-    (activeCategory === 'Все' || offer.category === activeCategory) &&
-    offer.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [offers, setOffers] = useState<BackendOffer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchOffers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch("https://italics-outsider-distill.ngrok-free.dev/api/v1/offers", {
+        method: "GET",
+        headers: {
+          "ngrok-skip-browser-warning": "69420",
+          "Content-Type": "application/json"
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Ошибка сервера: ${response.status}`);
+      }
+      const data = await response.json();
+      
+      // Safely extract the array of offers
+      let extractedOffers: BackendOffer[] = [];
+      if (Array.isArray(data)) {
+        extractedOffers = data;
+      } else if (data && typeof data === 'object') {
+        extractedOffers = data.items || data.offers || data.data || [];
+      }
+      
+      setOffers(extractedOffers);
+    } catch (err: any) {
+      setError(err.message || "Не удалось загрузить данные");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOffers();
+  }, [fetchOffers]);
+
+  const filteredOffers = Array.isArray(offers) ? offers.filter(offer => 
+    (activeCategory === 'Все' || (offer.category && offer.category === activeCategory)) &&
+    (offer.title ? offer.title.toLowerCase().includes(searchQuery.toLowerCase()) : false)
+  ) : [];
 
   return (
     <div className="bg-[#f2f4f7] w-full h-screen flex items-center justify-center font-sans overflow-hidden">
@@ -76,27 +128,60 @@ export default function App() {
 
             {/* Feed */}
             <main className="flex-1 bg-gray-50 p-4 space-y-4 overflow-y-auto relative z-0 pb-20">
-              {filteredOffers.length > 0 ? (
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <article key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+                    <div className="h-32 w-full bg-gray-200"></div>
+                    <div className="p-3 flex flex-col gap-2.5">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
+                      <div className="h-3 bg-gray-200 rounded w-full"></div>
+                      <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2 mt-1"></div>
+                      <div className="h-9 bg-gray-200 rounded-xl w-full mt-2"></div>
+                    </div>
+                  </article>
+                ))
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center h-64 text-center gap-4">
+                  <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-2">
+                    <AlertCircle size={32} />
+                  </div>
+                  <p className="font-medium text-slate-800">{error}</p>
+                  <button 
+                    onClick={fetchOffers}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 hover:bg-black text-white text-sm font-bold rounded-xl transition-all active:scale-[0.98]"
+                  >
+                    <RefreshCw size={16} />
+                    Попробовать снова
+                  </button>
+                </div>
+              ) : filteredOffers.length > 0 ? (
                 filteredOffers.map((offer) => (
                   <article key={offer.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="relative h-32 w-full bg-gray-200">
-                      <img 
-                        src={offer.image} 
-                        alt={offer.title} 
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                      <div className="absolute top-2 left-2 bg-white/95 px-2 py-1 rounded-lg text-[10px] font-bold text-red-600 shadow-sm">
-                        {offer.discountType}
-                      </div>
+                    <div className="relative h-32 w-full bg-gray-100 flex items-center justify-center">
+                      {offer.image_url ? (
+                        <img 
+                          src={offer.image_url} 
+                          alt={offer.title} 
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <ImageIcon size={32} className="text-gray-300" />
+                      )}
+                      {offer.discount_type && (
+                        <div className="absolute top-2 left-2 bg-white/95 px-2 py-1 rounded-lg text-[10px] font-bold text-red-600 shadow-sm uppercase">
+                          {offer.discount_type}
+                        </div>
+                      )}
                       <button className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-full text-gray-400 hover:text-[#ed1c24] transition-colors shadow-sm">
                         <Heart size={16} />
                       </button>
                     </div>
                     <div className="p-3 flex flex-col">
                       <div className="flex justify-between items-start mb-1">
-                        <h3 className="text-sm font-bold text-slate-900 leading-tight">{offer.title}</h3>
-                        <span className="text-[#ed1c24] font-bold text-xs ml-2">Акция</span>
+                        <h3 className="text-sm font-bold text-slate-900 leading-tight pr-2">{offer.title}</h3>
+                        <span className="text-[#ed1c24] font-bold text-[10px] ml-auto shrink-0 bg-red-50 px-1.5 py-0.5 rounded">Акция</span>
                       </div>
                       <p className="text-[11px] text-gray-500 mb-2 line-clamp-2">
                         {offer.description}
@@ -107,9 +192,14 @@ export default function App() {
                         <span className="truncate">{offer.address}</span>
                       </div>
                       
-                      <button className="w-full bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl hover:bg-black transition-colors">
-                        Получить
-                      </button>
+                      <a 
+                        href={offer.source_url || '#'} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="w-full bg-slate-900 flex items-center justify-center text-white text-xs font-bold py-2.5 rounded-xl hover:bg-black transition-colors"
+                      >
+                        Перейти
+                      </a>
                     </div>
                   </article>
                 ))
