@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Bell, MapPin, Home, Heart, Map as MapIcon, User, AlertCircle, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { CATEGORIES, Category } from './data';
+import { API_BASE_URL } from './config';
 
 interface BackendOffer {
   id: number | string;
@@ -27,10 +28,9 @@ export default function App() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch("https://italics-outsider-distill.ngrok-free.dev/api/v1/offers", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/offers`, {
         method: "GET",
         headers: {
-          "ngrok-skip-browser-warning": "69420",
           "Content-Type": "application/json"
         }
       });
@@ -44,7 +44,7 @@ export default function App() {
       if (Array.isArray(data)) {
         extractedOffers = data;
       } else if (data && typeof data === 'object') {
-        extractedOffers = data.items || data.offers || data.data || [];
+        extractedOffers = data.items || data.offers || data.data || data.results || [];
       }
       
       setOffers(extractedOffers);
